@@ -83,6 +83,6 @@ dependencies {
     implementation(libs.androidx.material3)
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
-    implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
