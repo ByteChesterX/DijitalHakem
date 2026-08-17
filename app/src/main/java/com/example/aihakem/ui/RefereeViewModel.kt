@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 
 sealed interface UiState {
     object Idle : UiState
+    object Listening : UiState
     object Loading : UiState
     data class Success(val resultText: String) : UiState
     data class Error(val message: String) : UiState
@@ -24,9 +25,24 @@ class RefereeViewModel(
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    fun analyzeDispute(topic: String, personA: String, textA: String, personB: String, textB: String) {
-        if (textA.isBlank() || textB.isBlank()) {
-            _uiState.value = UiState.Error("Lütfen her iki arkadaşın da ifadelerini doldurun.")
+    private var statementAText: String = ""
+    private var statementBText: String = ""
+
+    // Ses kaydı tamamlandığında gelen metinleri biriktirir
+    fun appendTranscript(speaker: Int, text: String) {
+        if (text.isBlank()) return
+        
+        if (speaker == 1) {
+            statementAText = if (statementAText.isEmpty()) text else "$statementAText $text"
+        } else {
+            statementBText = if (statementBText.isEmpty()) text else "$statementBText $text"
+        }
+    }
+
+    // İki tarafın konuşması tamamlandığında analizi başlatır
+    fun analyzeDispute(topic: String = "", personA: String = "1. Kişi", personB: String = "2. Kişi") {
+        if (statementAText.isBlank() || statementBText.isBlank()) {
+            _uiState.value = UiState.Error("Lütfen her iki tarafın da ifadesini kaydedin.")
             return
         }
 
@@ -34,8 +50,8 @@ class RefereeViewModel(
 
         viewModelScope.launch {
             try {
-                val statementA = Statement(personA.ifBlank { "1. Arkadaş" }, textA)
-                val statementB = Statement(personB.ifBlank { "2. Arkadaş" }, textB)
+                val statementA = Statement(personA, statementAText)
+                val statementB = Statement(personB, statementBText)
 
                 val result = repository.evaluateDispute(topic, statementA, statementB)
                 _uiState.value = UiState.Success(result)
@@ -45,7 +61,17 @@ class RefereeViewModel(
         }
     }
 
+    fun setListeningState(isListening: Boolean) {
+        if (isListening) {
+            _uiState.value = UiState.Listening
+        } else if (_uiState.value is UiState.Listening) {
+            _uiState.value = UiState.Idle
+        }
+    }
+
     fun reset() {
+        statementAText = ""
+        statementBText = ""
         _uiState.value = UiState.Idle
     }
 }
