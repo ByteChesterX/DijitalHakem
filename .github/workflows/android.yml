@@ -1,64 +1,72 @@
-name: Android CI & Release Build
+name: Build Android Release APK
 
 on:
   workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Versiyon Adı (örn: 1.0.0)"
+        required: true
+        default: "1.0.0"
+
+      version_code:
+        description: "Versiyon Kodu (örn: 1)"
+        required: true
+        default: "1"
+
+permissions:
+  contents: write
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout Kodu
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+      - name: JDK 17 Kurulumu
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      - name: Gradle Önbelleği Yapılandırması
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
+          gradle-home-cache-cleanup: true
 
-    - name: Build Release APK
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: ./gradlew assembleRelease
+      - name: Gradlew'yi Çalıştırılabilir Yap
+        run: chmod +x gradlew
 
-    # 1. Base64 Keystore dosyasını fiziksel release.keystore dosyasına dönüştür
-    - name: Decode Keystore
-      id: decode_keystore
-      uses: timheuer/base64-to-file@v1.2
-      with:
-        fileName: 'release.keystore'
-        encodedString: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ./app/release-keystore.jks
 
-    # 2. Güvenilir r0adkll action'ı ile APK'yı imzala
-    - name: Sign Release APK
-      id: sign_app
-      uses: r0adkll/sign-android-release@v1
-      with:
-        releaseDirectory: app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-        alias: ${{ secrets.RELEASE_KEY_ALIAS }}
-        keyStorePassword: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-        keyPassword: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      - name: Release APK Oluştur
+        run: ./gradlew assembleRelease
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ORG_GRADLE_PROJECT_versionName: ${{ github.event.inputs.version_name }}
+          ORG_GRADLE_PROJECT_versionCode: ${{ github.event.inputs.version_code }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-    - name: Upload Signed APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release-signed
-        path: ${{ steps.sign_app.outputs.signedFile }}
+      - name: APK Dosyasını Bul
+        id: find_apk
+        run: |
+          apk_path=$(find ./app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "apk_path=$apk_path" >> $GITHUB_OUTPUT
+          echo "Bulunan APK: $apk_path"
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: ${{ steps.sign_app.outputs.signedFile }}
-        tag_name: "v1.0.0-${{ github.run_number }}"
-        name: "Release v1.0.0 (Build #${{ github.run_number }})"
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: GitHub Release Oluştur ve APK Yükle
+        if: ${{ steps.find_apk.outputs.apk_path != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version_name }}
+          name: DijitalHakem v${{ github.event.inputs.version_name }}
+          files: ${{ steps.find_apk.outputs.apk_path }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
