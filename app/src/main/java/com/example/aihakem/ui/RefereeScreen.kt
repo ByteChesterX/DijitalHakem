@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.example.aihakem.R
 import com.example.aihakem.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlin.random.Random
 
 // Ubuntu Font Tanımı
 val UbuntuFontFamily = FontFamily(
