@@ -4,11 +4,14 @@
 
     <!-- Gemini API çağrıları için İnternet İzni -->
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Mikrofondan ses kaydı ve konuşma tanıma için Ses İzni -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="AI Hakem"
+        android:label="DijitalHakem"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AIHakem"
@@ -16,7 +19,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="AI Hakem"
+            android:label="DijitalHakem"
             android:theme="@style/Theme.AIHakem">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
