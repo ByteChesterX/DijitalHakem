@@ -1,162 +1,182 @@
 package com.example.aihakem.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.aihakem.R
+import com.example.aihakem.ui.theme.*
+import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Ubuntu Font Tanımı
+val UbuntuFontFamily = FontFamily(
+    Font(R.font.ubuntu_regular, FontWeight.Normal),
+    Font(R.font.ubuntu_bold, FontWeight.Bold)
+)
+
 @Composable
 fun RefereeScreen(viewModel: RefereeViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
-    var topic by remember { mutableStateOf("") }
-    var nameA by remember { mutableStateOf("Ahmet") }
-    var statementA by remember { mutableStateOf("") }
-    var nameB by remember { mutableStateOf("Mehmet") }
-    var statementB by remember { mutableStateOf("") }
+    var isListening by remember { mutableStateOf(false) }
+    var activeSpeaker by remember { mutableStateOf(1) } // 1: Kişi 1, 2: Kişi 2
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("⚖️ AI Tartışma Hakemi") }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(GruvboxBg)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Üst Başlık
+        Text(
+            text = "DijitalHakem",
+            color = GruvboxYellow,
+            fontSize = 28.sp,
+            fontFamily = UbuntuFontFamily,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 32.dp)
+        )
+
+        // Orta Kısım: Buton ve Ses Çubukları
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(280.dp)
         ) {
-            when (val state = uiState) {
-                is UiState.Idle, is UiState.Error -> {
-                    if (state is UiState.Error) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = state.message,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(12.dp)
-                            )
+            // Dinleme başladığında gözüken dalga çubukları (|||)
+            if (isListening) {
+                WaveformBars(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                )
+            }
+
+            // Ortadaki Büyük Minimal Buton
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(130.dp)
+                    .clip(CircleShape)
+                    .background(if (isListening) GruvboxOrange else GruvboxGreen)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        isListening = !isListening
+                        if (!isListening) {
+                            // Dinleme durduğunda sıradaki konuşmacıya geç
+                            activeSpeaker = if (activeSpeaker == 1) 2 else 1
                         }
                     }
-
-                    OutlinedTextField(
-                        value = topic,
-                        onValueChange = { topic = it },
-                        label = { Text("Tartışma Konusu (İsteğe Bağlı)") },
-                        placeholder = { Text("Örn: Hafta sonu planı / Bulaşık sırası") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    HorizontalDivider()
-
-                    // 1. Taraf
-                    Text(
-                        text = "1. Tarafın İfadesi",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    OutlinedTextField(
-                        value = nameA,
-                        onValueChange = { nameA = it },
-                        label = { Text("1. Kişinin İsmi") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = statementA,
-                        onValueChange = { statementA = it },
-                        label = { Text("$nameA ne diyor?") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
-                    )
-
-                    HorizontalDivider()
-
-                    // 2. Taraf
-                    Text(
-                        text = "2. Tarafın İfadesi",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    OutlinedTextField(
-                        value = nameB,
-                        onValueChange = { nameB = it },
-                        label = { Text("2. Kişinin İsmi") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = statementB,
-                        onValueChange = { statementB = it },
-                        label = { Text("$nameB ne diyor?") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = {
-                            viewModel.analyzeDispute(topic, nameA, statementA, nameB, statementB)
-                        },
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
-                    ) {
-                        Text("Kararı Açıkla & Gerekçelendir")
-                    }
-                }
-
-                is UiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(350.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            CircularProgressIndicator()
-                            Text(text = "Hakem taraf tutmadan ifadeleri inceliyor...")
-                        }
-                    }
-                }
-
-                is UiState.Success -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = state.resultText,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = { viewModel.reset() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Yeni Bir Tartışma Değerlendir")
-                    }
-                }
+            ) {
+                // Durum simgesi/noktası
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(GruvboxBg)
+                )
             }
         }
+
+        // Alt Kısım: Konuşmacı Bilgisi Kartı
+        SpeakerStatusCard(activeSpeaker = activeSpeaker, isListening = isListening)
+    }
+}
+
+// Dinamik Hareket Eden Ses Çubukları (|||)
+@Composable
+fun WaveformBars(modifier: Modifier = Modifier) {
+    val barHeights = remember { mutableStateListOf(0.3f, 0.6f, 0.9f, 0.5f, 0.8f, 0.4f, 0.7f) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(120)
+            for (i in barHeights.indices) {
+                barHeights[i] = (0.2f..1.0f).random()
+            }
+        }
+    }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        barHeights.forEach { heightFactor ->
+            val animatedHeight by animateFloatAsState(
+                targetValue = heightFactor,
+                animationSpec = tween(durationMillis = 100),
+                label = "bar_height"
+            )
+
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .fillMaxHeight(animatedHeight)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(GruvboxGreen)
+            )
+        }
+    }
+}
+
+// Konuşmacı Kartı
+@Composable
+fun SpeakerStatusCard(activeSpeaker: Int, isListening: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(GruvboxBgSoft)
+            .padding(20.dp),
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SpeakerItem(
+            name = "Kişi 1",
+            isActive = activeSpeaker == 1,
+            isListening = isListening && activeSpeaker == 1
+        )
+        SpeakerItem(
+            name = "Kişi 2",
+            isActive = activeSpeaker == 2,
+            isListening = isListening && activeSpeaker == 2
+        )
+    }
+}
+
+@Composable
+fun SpeakerItem(name: String, isActive: Boolean, isListening: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = name,
+            color = if (isActive) GruvboxYellow else GruvboxGray,
+            fontSize = 18.sp,
+            fontFamily = UbuntuFontFamily,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = if (isListening) "Konuşuyor..." else if (isActive) "Sıra Sende" else "Bekliyor",
+            color = if (isListening) GruvboxGreen else GruvboxFg,
+            fontSize = 13.sp,
+            fontFamily = UbuntuFontFamily
+        )
     }
 }
