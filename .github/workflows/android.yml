@@ -1,14 +1,13 @@
-name: Android CI Build
+name: Android CI & Release Build
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch: # Sadece manuel olarak 'Run workflow' ile çalışır
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Release oluşturabilmek için yazma izni gerekli
 
     steps:
     - uses: actions/checkout@v4
@@ -23,13 +22,34 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build Debug APK
+    - name: Build Release APK
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleRelease
 
-    - name: Upload APK Artifact
+    - name: Sign Release APK
+      uses: r3d-bucket/signing-action@v1.1
+      id: sign_app
+      with:
+        releaseDirectory: app/build/outputs/apk/release
+        signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+        alias: ${{ secrets.RELEASE_KEY_ALIAS }}
+        keyStorePassword: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        keyPassword: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+    - name: Upload Signed APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: app-release-signed
+        path: ${{ steps.sign_app.outputs.signedFile }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ${{ steps.sign_app.outputs.signedFile }}
+        tag_name: "v1.0.0-${{ github.run_number }}"
+        name: "Release v1.0.0 (Build #${{ github.run_number }})"
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
