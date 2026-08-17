@@ -1,13 +1,13 @@
 name: Android CI & Release Build
 
 on:
-  workflow_dispatch: # Sadece manuel olarak 'Run workflow' ile çalışır
+  workflow_dispatch:
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Release oluşturabilmek için yazma izni gerekli
+      contents: write
 
     steps:
     - uses: actions/checkout@v4
@@ -27,9 +27,18 @@ jobs:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: ./gradlew assembleRelease
 
+    # 1. Base64 Keystore dosyasını fiziksel release.keystore dosyasına dönüştür
+    - name: Decode Keystore
+      id: decode_keystore
+      uses: timheuer/base64-to-file@v1.2
+      with:
+        fileName: 'release.keystore'
+        encodedString: ${{ secrets.KEYSTORE_BASE64 }}
+
+    # 2. Güvenilir r0adkll action'ı ile APK'yı imzala
     - name: Sign Release APK
-      uses: r3d-bucket/signing-action@v1.1
       id: sign_app
+      uses: r0adkll/sign-android-release@v1
       with:
         releaseDirectory: app/build/outputs/apk/release
         signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
