@@ -7,8 +7,15 @@ import kotlinx.coroutines.withContext
 
 class RefereeRepository(apiKey: String) {
 
+    // Ana model olarak gemini-1.5-flash kullanıyoruz
     private val generativeModel = GenerativeModel(
         modelName = "gemini-1.5-flash",
+        apiKey = apiKey
+    )
+
+    // Olası bir endpoint hatasında yedek model
+    private val fallbackModel = GenerativeModel(
+        modelName = "gemini-pro",
         apiKey = apiKey
     )
 
@@ -46,7 +53,13 @@ class RefereeRepository(apiKey: String) {
             [Neden bu karara varıldığının ayrıntılı, mantıklı açıklaması]
         """.trimIndent()
 
-        val response = generativeModel.generateContent(prompt)
-        return@withContext response.text ?: "Karar oluşturulurken bir yanıt alınamadı."
+        return@withContext try {
+            val response = generativeModel.generateContent(prompt)
+            response.text ?: "Karar oluşturulurken bir yanıt alınamadı."
+        } catch (e: Exception) {
+            // gemini-1.5-flash çağrısında hata oluşursa yedek modele düşer
+            val fallbackResponse = fallbackModel.generateContent(prompt)
+            fallbackResponse.text ?: "Karar oluşturulurken bir yanıt alınamadı."
+        }
     }
 }
