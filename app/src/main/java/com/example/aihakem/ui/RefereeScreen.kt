@@ -23,10 +23,10 @@ import com.example.aihakem.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
-// Ubuntu Font Tanımı
+// Ubuntu Font Tanımı (resId açıkça belirtildi)
 val UbuntuFontFamily = FontFamily(
-    Font(R.font.ubuntu_regular, FontWeight.Normal),
-    Font(R.font.ubuntu_bold, FontWeight.Bold)
+    Font(resId = R.font.ubuntu_regular, weight = FontWeight.Normal),
+    Font(resId = R.font.ubuntu_bold, weight = FontWeight.Bold)
 )
 
 @Composable
@@ -59,7 +59,6 @@ fun RefereeScreen(viewModel: RefereeViewModel) {
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(280.dp)
         ) {
-            // Dinleme başladığında gözüken dalga çubukları (|||)
             if (isListening) {
                 WaveformBars(
                     modifier = Modifier
@@ -81,12 +80,10 @@ fun RefereeScreen(viewModel: RefereeViewModel) {
                     ) {
                         isListening = !isListening
                         if (!isListening) {
-                            // Dinleme durduğunda sıradaki konuşmacıya geç
                             activeSpeaker = if (activeSpeaker == 1) 2 else 1
                         }
                     }
             ) {
-                // Durum simgesi/noktası
                 Box(
                     modifier = Modifier
                         .size(24.dp)
@@ -101,7 +98,6 @@ fun RefereeScreen(viewModel: RefereeViewModel) {
     }
 }
 
-// Dinamik Hareket Eden Ses Çubukları (|||)
 @Composable
 fun WaveformBars(modifier: Modifier = Modifier) {
     val barHeights = remember { mutableStateListOf(0.3f, 0.6f, 0.9f, 0.5f, 0.8f, 0.4f, 0.7f) }
@@ -110,7 +106,7 @@ fun WaveformBars(modifier: Modifier = Modifier) {
         while (true) {
             delay(120)
             for (i in barHeights.indices) {
-                barHeights[i] = (0.2f..1.0f).random()
+                barHeights[i] = Random.nextDouble(0.2, 1.0).toFloat()
             }
         }
     }
@@ -138,7 +134,6 @@ fun WaveformBars(modifier: Modifier = Modifier) {
     }
 }
 
-// Konuşmacı Kartı
 @Composable
 fun SpeakerStatusCard(activeSpeaker: Int, isListening: Boolean) {
     Row(
