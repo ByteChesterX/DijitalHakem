@@ -14,8 +14,10 @@ android {
         applicationId = "com.example.aihakem"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+
+        // Workflow'dan gelen versiyon bilgilerini okur (Yoksa varsayılanı kullanır)
+        versionCode = System.getenv("ORG_GRADLE_PROJECT_versionCode")?.toIntOrNull() ?: 1
+        versionName = System.getenv("ORG_GRADLE_PROJECT_versionName") ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -33,6 +35,19 @@ android {
         buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
     }
 
+    // 🔑 İmzalama Yapılandırması
+    signingConfigs {
+        create("release") {
+            val keystoreFile = file("release-keystore.jks")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: ""
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -40,6 +55,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Release derlemesine imzalama ayarını bağlıyoruz
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
